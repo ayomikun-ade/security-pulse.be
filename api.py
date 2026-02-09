@@ -11,7 +11,6 @@ from main import (
     fetch_rss_news,
     CISA_URL,
     RSS_FEEDS,
-    LOOKBACK_DAYS
 )
 
 app = FastAPI(title="Security Pulse API")
@@ -19,7 +18,7 @@ app = FastAPI(title="Security Pulse API")
 # Configure CORS to allow requests from the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL, e.g., "http://localhost:3000"
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -9,13 +9,31 @@ from typing import List, Dict, Any
 CISA_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 RSS_FEEDS = [
     {"name": "The Hacker News", "url": "https://feeds.feedburner.com/TheHackersNews"},
-    {"name": "BleepingComputer", "url": "https://www.bleepingcomputer.com/feed/"}
+    {"name": "BleepingComputer", "url": "https://www.bleepingcomputer.com/feed/"},
+    {"name": "Dark Reading", "url": "https://www.darkreading.com/rss.xml"},
+    {"name": "SANS ISC", "url": "https://isc.sans.edu/rssfeed.xml"},
+    {"name": "Krebs on Security", "url": "https://krebsonsecurity.com/feed/"},
+    {"name": "Security Affairs", "url": "https://securityaffairs.com/feed"},
+    {"name": "Hack Read", "url": "https://www.hackread.com/feed/"}
 ]
 FILENAME = "DAILY_ADVISORY.md"
 LOOKBACK_DAYS = 5  # Ensures news isn't "stale"
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+def get_priority(text: str) -> str:
+    text = text.lower()
+    high_keywords = ["critical", "zero-day", "0-day", "active exploitation", "rce", "unauthenticated", "emergency"]
+    medium_keywords = ["high severity", "vulnerability", "patch", "security update", "exploit", "breach", "leak"]
+    
+    for word in high_keywords:
+        if word in text:
+            return "High"
+    for word in medium_keywords:
+        if word in text:
+            return "Medium"
+    return "Low"
 
 def fetch_vulnerabilities(url: str) -> Dict[str, Any]:
     try:
@@ -38,6 +56,13 @@ def filter_recent_vulnerabilities(data: Dict[str, Any], days: int) -> List[Dict[
             # CISA date format is YYYY-MM-DD
             added_date = datetime.strptime(vuln.get('dateAdded', ''), '%Y-%m-%d')
             if added_date >= threshold_date:
+                # CISA KEVs are high priority by default, but we check description too
+                priority = get_priority(vuln.get('shortDescription', '') + " " + vuln.get('vulnerabilityName', ''))
+                # All KEVs should be at least Medium
+                if priority == "Low":
+                    priority = "Medium"
+                
+                vuln['priority'] = priority
                 recent_vulns.append(vuln)
         except ValueError:
             continue
@@ -62,13 +87,25 @@ def fetch_rss_news(feeds: List[Dict[str, str]], days: int) -> List[Dict[str, Any
             # Iterate over RSS items
             for item in root.findall('./channel/item'):
                 try:
-                    pub_date = parsedate_to_datetime(item.find('pubDate').text)
+                    pub_date_elem = item.find('pubDate')
+                    if pub_date_elem is None:
+                        continue
+                        
+                    pub_date = parsedate_to_datetime(pub_date_elem.text)
                     if pub_date >= threshold_date:
+                        title = item.find('title').text if item.find('title') is not None else "No Title"
+                        link = item.find('link').text if item.find('link') is not None else "#"
+                        description_elem = item.find('description')
+                        description = description_elem.text if description_elem is not None else ""
+                        
+                        priority = get_priority(title + " " + description)
+                        
                         news_items.append({
-                            'title': item.find('title').text,
-                            'link': item.find('link').text,
+                            'title': title,
+                            'link': link,
                             'source': feed['name'],
-                            'date': pub_date.strftime('%Y-%m-%d')
+                            'date': pub_date.strftime('%Y-%m-%d'),
+                            'priority': priority
                         })
                 except (ValueError, AttributeError):
                     continue
@@ -89,7 +126,8 @@ def generate_markdown(vulnerabilities: List[Dict[str, Any]], news: List[Dict[str
     else:
         for v in vulnerabilities:
             cve_id = v.get('cveID', 'N/A')
-            markdown_content += f"### 🔴 {v.get('vulnerabilityName', 'Unknown')}\n"
+            priority = v.get('priority', 'Medium')
+            markdown_content += f"### 🔴 {v.get('vulnerabilityName', 'Unknown')} [Priority: {priority}]\n"
             markdown_content += f"- **CVE ID:** [{cve_id}](https://nvd.nist.gov/vuln/detail/{cve_id})\n"
             markdown_content += f"- **Vendor/Project:** {v.get('vendorProject', 'N/A')}\n"
             markdown_content += f"- **Product:** {v.get('product', 'N/A')}\n"
@@ -104,7 +142,8 @@ def generate_markdown(vulnerabilities: List[Dict[str, Any]], news: List[Dict[str
         markdown_content += "> No significant security news found in the last 72 hours.\n"
     else:
         for n in news:
-            markdown_content += f"- **[{n['title']}]({n['link']})**\n"
+            priority = n.get('priority', 'Low')
+            markdown_content += f"- **[{n['title']}]({n['link']})** [Priority: {priority}]\n"
             markdown_content += f"  - *Source:* {n['source']} | *Date:* {n['date']}\n"
 
     return markdown_content
