@@ -2,7 +2,9 @@ import json
 import os
 from datetime import datetime
 
-STORE_FILE = os.path.join(os.path.dirname(__file__), "advisory_log.json")
+# Vercel serverless functions have a read-only filesystem except /tmp.
+# ADVISORY_LOG_PATH can be overridden in .env for local persistence.
+STORE_FILE = os.environ.get("ADVISORY_LOG_PATH", "/tmp/advisory_log.json")
 
 
 def _load() -> dict:

@@ -52,6 +52,7 @@ def generate_advisory_sections(
         ],
         temperature=0.2,
         max_tokens=1500,
+        response_format={"type": "json_object"},
     )
 
     raw = response.choices[0].message.content.strip()
@@ -61,7 +62,13 @@ def generate_advisory_sections(
         parts = raw.split("```")
         raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
 
-    sections = json.loads(raw)
+    try:
+        sections = json.loads(raw)
+    except json.JSONDecodeError:
+        # Sanitise stray control characters (literal newlines inside JSON strings)
+        import re
+        cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', raw)
+        sections = json.loads(cleaned)
 
     required = {"title", "overview", "impact", "affected_products", "preventive_measures", "references"}
     missing = required - sections.keys()
