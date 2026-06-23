@@ -1,1 +1,7 @@
-venv
+venv/
+.env
+.env.*
+*.env
+__pycache__/
+*.pyc
+advisory_log.json

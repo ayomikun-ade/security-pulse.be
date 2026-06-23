@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+from bs4 import BeautifulSoup
 
 # Configuration
 CISA_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
@@ -69,6 +70,52 @@ def filter_recent_vulnerabilities(data: Dict[str, Any], days: int) -> List[Dict[
             
     return recent_vulns
 
+ALLOWED_ARTICLE_DOMAINS = {
+    "thehackernews.com",
+    "feeds.feedburner.com",
+    "bleepingcomputer.com",
+    "darkreading.com",
+    "isc.sans.edu",
+    "krebsonsecurity.com",
+    "securityaffairs.com",
+    "hackread.com",
+    "nvd.nist.gov",
+    "cisa.gov",
+}
+
+def _is_allowed_url(url: str) -> bool:
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        host = parsed.hostname or ""
+        # Allow exact match or subdomain match
+        return any(host == d or host.endswith(f".{d}") for d in ALLOWED_ARTICLE_DOMAINS)
+    except Exception:
+        return False
+
+def fetch_article_text(url: str) -> str:
+    if not _is_allowed_url(url):
+        logging.warning(f"Blocked fetch for non-allowlisted URL: {url}")
+        return ""
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=12)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "lxml")
+        for tag in soup(["nav", "footer", "script", "style", "aside", "header"]):
+            tag.decompose()
+        content = soup.find("article") or soup.find("main") or soup.find("body")
+        if content:
+            return " ".join(content.get_text(separator=" ", strip=True).split())[:8000]
+        return ""
+    except Exception as e:
+        logging.warning(f"Could not fetch article text from {url}: {e}")
+        return ""
+
 def fetch_rss_news(feeds: List[Dict[str, str]], days: int) -> List[Dict[str, Any]]:
     news_items = []
     # Use timezone-aware current time for comparison with RSS dates
@@ -105,7 +152,8 @@ def fetch_rss_news(feeds: List[Dict[str, str]], days: int) -> List[Dict[str, Any
                             'link': link,
                             'source': feed['name'],
                             'date': pub_date.strftime('%Y-%m-%d'),
-                            'priority': priority
+                            'priority': priority,
+                            'description': description,
                         })
                 except (ValueError, AttributeError):
                     continue

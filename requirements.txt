@@ -1,3 +1,9 @@
 fastapi
 uvicorn
 requests
+groq
+python-docx
+beautifulsoup4
+lxml
+slowapi
+python-dotenv
