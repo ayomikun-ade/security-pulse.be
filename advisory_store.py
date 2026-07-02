@@ -21,7 +21,7 @@ def _save(data: dict):
 
 def get_next_id() -> str:
     data = _load()
-    today = datetime.now().strftime("%y%m%d")
+    today = datetime.now().strftime("%d%m%y")
     key = f"seq_{today}"
     seq = data.get(key, 0) + 1
     data[key] = seq

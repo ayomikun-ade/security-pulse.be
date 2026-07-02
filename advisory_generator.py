@@ -2,7 +2,6 @@ import json
 import os
 import logging
 from io import BytesIO
-from datetime import datetime
 
 from groq import Groq
 from docx import Document
@@ -82,6 +81,16 @@ def generate_advisory_sections(
 # DOCX builder
 # ---------------------------------------------------------------------------
 
+_BG_HEADER = "0d1f3c"  # dark navy — header ID cell and section label rows
+_BG_WHITE  = "ffffff"  # title cell and content rows
+_FG_WHITE  = "ffffff"
+_FG_BLUE   = "2563eb"  # title text colour
+_FG_BODY   = "1a1a1a"  # body text
+
+_COL_ID    = Inches(1.5)
+_COL_TITLE = Inches(5.1)
+
+
 def _set_cell_bg(cell, hex_color: str):
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
@@ -92,17 +101,44 @@ def _set_cell_bg(cell, hex_color: str):
     tcPr.append(shd)
 
 
-def _cell_para(cell, text: str, bold: bool = False, font_size: int = 11, color: str = None):
-    cell.text = ""
-    para = cell.paragraphs[0]
+def _make_run(para, text: str, bold: bool = False, color: str = _FG_BODY):
     run = para.add_run(text)
     run.bold = bold
     run.font.name = "Verdana"
-    run.font.size = Pt(font_size)
-    if color:
-        r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
-        run.font.color.rgb = RGBColor(r, g, b)
-    return para
+    run.font.size = Pt(11)
+    r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
+    run.font.color.rgb = RGBColor(r, g, b)
+
+
+def _merged_row(table):
+    row = table.add_row()
+    return row.cells[0].merge(row.cells[1])
+
+
+def _add_section_label(table, label: str):
+    cell = _merged_row(table)
+    cell.paragraphs[0].clear()
+    _make_run(cell.paragraphs[0], label.upper(), bold=True, color=_FG_WHITE)
+    _set_cell_bg(cell, _BG_HEADER)
+
+
+def _add_content_text(table, text: str):
+    cell = _merged_row(table)
+    cell.paragraphs[0].clear()
+    _make_run(cell.paragraphs[0], text.strip(), color=_FG_BODY)
+    _set_cell_bg(cell, _BG_WHITE)
+
+
+def _add_content_list(table, text: str, numbered: bool = False):
+    cell = _merged_row(table)
+    _set_cell_bg(cell, _BG_WHITE)
+    items = [line.strip() for line in text.strip().splitlines() if line.strip()]
+    for i, item in enumerate(items):
+        para = cell.paragraphs[0] if i == 0 else cell.add_paragraph()
+        para.clear()
+        para.paragraph_format.left_indent = Inches(0.2)
+        prefix = f"{i + 1}.  " if numbered else "•  "
+        _make_run(para, prefix + item, color=_FG_BODY)
 
 
 def build_advisory_docx(sections: dict, advisory_id: str) -> bytes:
@@ -114,57 +150,42 @@ def build_advisory_docx(sections: dict, advisory_id: str) -> bytes:
         sec.left_margin = Inches(1.0)
         sec.right_margin = Inches(1.0)
 
-    # Remove default empty paragraph
     for para in doc.paragraphs:
-        p = para._element
-        p.getparent().remove(p)
+        para._element.getparent().remove(para._element)
 
     table = doc.add_table(rows=0, cols=2)
     table.style = "Table Grid"
 
-    # Column widths: narrow label col, wide content col
-    col_widths = [Inches(1.6), Inches(5.0)]
+    # ── Header row: ID | Title (2 columns) ─────────────────────────────────
+    header_row = table.add_row()
+    header_row.cells[0].width = _COL_ID
+    header_row.cells[1].width = _COL_TITLE
 
-    def add_row(label: str, content: str, label_bg: str = "1a2b4a", label_color: str = "ffffff", content_bg: str = "f4f7fb"):
-        row = table.add_row()
-        row.cells[0].width = col_widths[0]
-        row.cells[1].width = col_widths[1]
+    id_cell = header_row.cells[0]
+    id_cell.paragraphs[0].clear()
+    _make_run(id_cell.paragraphs[0], advisory_id, bold=True, color=_FG_WHITE)
+    _set_cell_bg(id_cell, _BG_HEADER)
 
-        _cell_para(row.cells[0], label, bold=True, font_size=11, color=label_color)
-        _set_cell_bg(row.cells[0], label_bg)
+    title_cell = header_row.cells[1]
+    title_cell.paragraphs[0].clear()
+    _make_run(title_cell.paragraphs[0], sections.get("title", ""), bold=True, color=_FG_BLUE)
+    _set_cell_bg(title_cell, _BG_WHITE)
 
-        _cell_para(row.cells[1], content, font_size=11)
-        _set_cell_bg(row.cells[1], content_bg)
+    # ── Section rows (label + content, each full-width merged) ─────────────
+    _add_section_label(table, "Overview")
+    _add_content_text(table, sections.get("overview", ""))
 
-        return row
+    _add_section_label(table, "Impact")
+    _add_content_text(table, sections.get("impact", ""))
 
-    # Header row: ID + Title spanning full width via merge
-    id_row = table.add_row()
-    id_row.cells[0].width = col_widths[0]
-    id_row.cells[1].width = col_widths[1]
-    _cell_para(id_row.cells[0], advisory_id, bold=True, font_size=11, color="ffffff")
-    _set_cell_bg(id_row.cells[0], "0d1f3c")
-    _cell_para(id_row.cells[1], sections.get("title", ""), bold=True, font_size=11, color="ffffff")
-    _set_cell_bg(id_row.cells[1], "0d1f3c")
+    _add_section_label(table, "Affected Products")
+    _add_content_list(table, sections.get("affected_products", ""), numbered=False)
 
-    # Section rows
-    rows_def = [
-        ("Overview", "overview"),
-        ("Impact", "impact"),
-        ("Affected Products", "affected_products"),
-        ("Preventive Measures", "preventive_measures"),
-        ("References", "references"),
-    ]
+    _add_section_label(table, "Preventive Measures")
+    _add_content_list(table, sections.get("preventive_measures", ""), numbered=False)
 
-    for label, key in rows_def:
-        add_row(label, sections.get(key, ""))
-
-    # Footer row with date
-    date_str = datetime.now().strftime("%B %d, %Y")
-    footer_row = table.add_row()
-    merged = footer_row.cells[0].merge(footer_row.cells[1])
-    _cell_para(merged, f"Generated: {date_str}", font_size=9, color="666666")
-    _set_cell_bg(merged, "eef1f5")
+    _add_section_label(table, "References")
+    _add_content_list(table, sections.get("references", ""), numbered=True)
 
     buf = BytesIO()
     doc.save(buf)
