@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 
 # Configuration
@@ -83,9 +84,26 @@ ALLOWED_ARTICLE_DOMAINS = {
     "cisa.gov",
 }
 
+_IGNORED_LINK_DOMAINS = {
+    "twitter.com",
+    "x.com",
+    "facebook.com",
+    "linkedin.com",
+    "reddit.com",
+    "t.me",
+    "youtube.com",
+    "instagram.com",
+    "news.google.com",
+    "doubleclick.net",
+    "googlesyndication.com",
+    "blogger.googleusercontent.com",
+    "thehackernews.uk",
+}
+
+_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".avif", ".bmp", ".ico")
+
 def _is_allowed_url(url: str) -> bool:
     try:
-        from urllib.parse import urlparse
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
             return False
@@ -95,22 +113,77 @@ def _is_allowed_url(url: str) -> bool:
     except Exception:
         return False
 
+def _extract_reference_links(content_soup, source_url: str) -> List[str]:
+    source_host = (urlparse(source_url).hostname or "").lower().removeprefix("www.")
+    refs: List[str] = []
+    seen = {source_url.rstrip("/")}
+
+    for a_tag in content_soup.find_all("a", href=True):
+        href = a_tag["href"].strip()
+        if not href or href.startswith(("#", "mailto:", "javascript:")):
+            continue
+        full_url = urljoin(source_url, href)
+        parsed = urlparse(full_url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            continue
+        if parsed.path.lower().endswith(_IMAGE_EXTENSIONS):
+            continue
+
+        host = parsed.hostname.lower().removeprefix("www.")
+        if any(host == d or host.endswith(f".{d}") for d in _IGNORED_LINK_DOMAINS):
+            continue
+
+        # Keep external research/vendor/advisory links (or external links from NVD/CISA)
+        if host != source_host or host in ("nvd.nist.gov", "cisa.gov"):
+            normalized = full_url.rstrip("/")
+            if normalized not in seen:
+                seen.add(normalized)
+                refs.append(full_url)
+                if len(refs) >= 8:
+                    break
+
+    return refs
+
+def _select_article_container(soup: BeautifulSoup):
+    # Check specific known article body containers first
+    for selector in (
+        soup.find(id="articlebody"),
+        soup.find("div", class_="article_section"),
+        soup.find("div", class_="article-content"),
+        soup.find("div", class_="entry-content"),
+    ):
+        if selector and len(selector.get_text(strip=True)) > 400:
+            return selector
+
+    # Otherwise pick the first <article> or <main> tag with substantial body text
+    for tag_name in ("article", "main"):
+        for candidate in soup.find_all(tag_name):
+            if len(candidate.get_text(strip=True)) > 400:
+                return candidate
+
+    return soup.find("article") or soup.find("main") or soup.find("body")
+
 def fetch_article_text(url: str) -> str:
     if not _is_allowed_url(url):
         logging.warning(f"Blocked fetch for non-allowlisted URL: {url}")
         return ""
     try:
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         }
         response = requests.get(url, headers=headers, timeout=12)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "lxml")
-        for tag in soup(["nav", "footer", "script", "style", "aside", "header"]):
+        for tag in soup(["nav", "footer", "script", "style", "aside", "header", "noscript", "form"]):
             tag.decompose()
-        content = soup.find("article") or soup.find("main") or soup.find("body")
+        content = _select_article_container(soup)
         if content:
-            return " ".join(content.get_text(separator=" ", strip=True).split())[:8000]
+            ref_links = _extract_reference_links(content, response.url or url)
+            text = " ".join(content.get_text(separator=" ", strip=True).split())[:7500]
+            if ref_links:
+                refs_block = "\n".join(ref_links)
+                return f"{text}\n\nReferenced URLs in Article:\n{refs_block}"
+            return text
         return ""
     except Exception as e:
         logging.warning(f"Could not fetch article text from {url}: {e}")
