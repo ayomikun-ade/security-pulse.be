@@ -1,0 +1,58 @@
+name: Telegram Security Digest
+
+on:
+  schedule:
+    # Runs at 9:00 AM and 4:00 PM UTC+1 (08:00 and 15:00 UTC)
+    - cron: "0 8,15 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Lookback window in days"
+        required: false
+        default: "3"
+      max_alerts:
+        description: "Maximum alerts to send in this run"
+        required: false
+        default: "15"
+
+permissions:
+  contents: write
+
+jobs:
+  send-telegram-alerts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "requirements.txt"
+
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Telegram Notifier
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          DAYS="${{ github.event.inputs.days || '3' }}"
+          MAX_ALERTS="${{ github.event.inputs.max_alerts || '15' }}"
+          python telegram_notifier.py --days "$DAYS" --max-alerts "$MAX_ALERTS"
+
+      - name: Commit updated deduplication state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add telegram_sent.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update telegram sent alerts log [skip ci]"
+            git push
+          else
+            echo "No new alerts recorded; skipping commit."
+          fi
