@@ -2,7 +2,12 @@
   "sent_items": [
     "https://www.darkreading.com/vulnerabilities-threats/november-patch-tuesday-cornucopia-cves",
     "https://krebsonsecurity.com/2026/11/microsoft-fixes-nearly-1100-security-vulnerabilities/",
-    "https://thehackernews.com/2026/11/critical-zoom-workplace-flaw-could.html"
+    "https://thehackernews.com/2026/11/critical-zoom-workplace-flaw-could.html",
+    "https://isc.sans.edu/diary/rss/33508",
+    "https://thehackernews.com/2026/11/new-signdrop-zero-day-exploit-turns.html",
+    "https://thehackernews.com/2026/11/critical-red-hat-quay-flaw-lets.html",
+    "https://thehackernews.com/2026/11/new-n-central-exploits-work-against.html",
+    "https://thehackernews.com/2026/11/critical-apache-http2-flaw-could-let.html"
   ],
   "subscribers": [],
   "last_update_id": 805569148
