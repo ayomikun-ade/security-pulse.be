@@ -2,8 +2,8 @@ name: Telegram Security Digest
 
 on:
   schedule:
-    # Runs at 9:00 AM and 4:00 PM UTC+1 (08:00 and 15:00 UTC)
-    - cron: "0 8,15 * * *"
+    # Runs Monday-Friday at 9:00 AM and 4:00 PM UTC+1 (08:00 and 15:00 UTC)
+    - cron: "0 8,15 * * 1-5"
   workflow_dispatch:
     inputs:
       days:
