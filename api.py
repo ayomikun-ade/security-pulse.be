@@ -96,7 +96,7 @@ def get_advisory_data(days: int = 4) -> Dict[str, Any]:
 
 @app.post("/api/preview-advisory")
 @limiter.limit("10/hour")
-async def preview_advisory(request: Request, body: NewsItemRequest):
+def preview_advisory(request: Request, body: NewsItemRequest):
     try:
         article_text = fetch_article_text(body.link)
         sections = generate_advisory_sections(
@@ -119,7 +119,7 @@ async def preview_advisory(request: Request, body: NewsItemRequest):
 
 @app.post("/api/download-advisory")
 @limiter.limit("10/hour")
-async def download_advisory(request: Request, body: DownloadRequest):
+def download_advisory(request: Request, body: DownloadRequest):
     try:
         advisory_id = get_next_id()
         sections = {
