@@ -21,7 +21,12 @@
     "https://www.bleepingcomputer.com/news/security/google-project-zero-cuts-bug-disclosure-deadline-to-30-days-amid-ai-threats/",
     "https://securityaffairs.com/203260/hacking/google-gtig-warns-ai-agents-automate-exploits-steal-credentials-and-scale-cybercrime.html",
     "https://thehackernews.com/2026/11/researchers-detail-iphone-flaw-that-let.html",
-    "https://thehackernews.com/2026/11/hijacked-optimizely-scripts-served-card.html"
+    "https://thehackernews.com/2026/11/hijacked-optimizely-scripts-served-card.html",
+    "https://thehackernews.com/2026/11/researchers-claim-two-rce-exploits-that.html",
+    "https://www.bleepingcomputer.com/news/security/apache-warns-of-roller-rce-vulnerability-exploited-in-attacks/",
+    "https://krebsonsecurity.com/2026/11/attackers-used-optimizely-to-a-b-test-malware-on-top-websites/",
+    "https://www.bleepingcomputer.com/news/security/cloud-keys-leaked-in-docker-hub-images-are-stolen-within-seconds/",
+    "https://thehackernews.com/2026/11/russian-cold-relic-hackers-use-stolen.html"
   ],
   "subscribers": [],
   "last_update_id": 805569148
