@@ -26,7 +26,18 @@
     "https://www.bleepingcomputer.com/news/security/apache-warns-of-roller-rce-vulnerability-exploited-in-attacks/",
     "https://krebsonsecurity.com/2026/11/attackers-used-optimizely-to-a-b-test-malware-on-top-websites/",
     "https://www.bleepingcomputer.com/news/security/cloud-keys-leaked-in-docker-hub-images-are-stolen-within-seconds/",
-    "https://thehackernews.com/2026/11/russian-cold-relic-hackers-use-stolen.html"
+    "https://thehackernews.com/2026/11/russian-cold-relic-hackers-use-stolen.html",
+    "KEV:CVE-2026-90436",
+    "https://thehackernews.com/2026/11/critical-apache-roller-rce-flaw-under.html",
+    "https://isc.sans.edu/diary/rss/33532",
+    "https://securityaffairs.com/203419/security/apache-roller-rce-flaw-cve-2026-129448-under-active-attack.html",
+    "https://thehackernews.com/2026/11/cisa-warns-of-4-exploited-flaws-linked.html",
+    "https://thehackernews.com/2026/11/10-year-old-nginx-http2-flaw-lets.html",
+    "https://www.bleepingcomputer.com/news/security/critical-nginx-nginx2root-bugs-let-attackers-hijack-servers/",
+    "https://securityaffairs.com/203440/hacking/nginx2rootai-discovers-five-critical-nginx-flaws-and-a-path-to-root.html",
+    "https://hackread.com/f5-patches-nginx-http-2-vulnerabilities-dating-2015/",
+    "https://hackread.com/what-github-actions-cache-expose-to-pull-request/",
+    "https://www.bleepingcomputer.com/news/microsoft/microsoft-confirms-app-installation-launch-issues-after-hotpatch/"
   ],
   "subscribers": [],
   "last_update_id": 805569148
