@@ -37,7 +37,12 @@
     "https://securityaffairs.com/203440/hacking/nginx2rootai-discovers-five-critical-nginx-flaws-and-a-path-to-root.html",
     "https://hackread.com/f5-patches-nginx-http-2-vulnerabilities-dating-2015/",
     "https://hackread.com/what-github-actions-cache-expose-to-pull-request/",
-    "https://www.bleepingcomputer.com/news/microsoft/microsoft-confirms-app-installation-launch-issues-after-hotpatch/"
+    "https://www.bleepingcomputer.com/news/microsoft/microsoft-confirms-app-installation-launch-issues-after-hotpatch/",
+    "https://securityaffairs.com/203537/hacking/chaotic-eclipse-releases-fastunlock-a-new-windows-zero-day-vulnerability.html",
+    "https://thehackernews.com/2026/11/hackers-exploit-critical-cisco.html",
+    "https://thehackernews.com/2026/11/new-unpatched-windows-0-day-fastunlock.html",
+    "https://securityaffairs.com/203598/hacking/hackers-exploit-cisco-expressway-flaw-cve-2026-76466-to-breach-russian-organization.html",
+    "https://securityaffairs.com/203504/hacking/u-s-cisa-adds-apache-axis-vanderbilt-redcapberriai-litellm-and-synology-dsm-flaws-to-its-known-exploited-vulnerabilities-catalog.html"
   ],
   "subscribers": [],
   "last_update_id": 805569148
